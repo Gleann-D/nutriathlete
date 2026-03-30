@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriAthlète — Agent IA</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0d0f;
+    --surface: #111518;
+    --surface2: #181d21;
+    --border: #222a30;
+    --accent: #c8f560;
+    --accent2: #60d5f5;
+    --warm: #f5a660;
+    --text: #e8eaeb;
+    --muted: #6b7b85;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  header {
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(10,13,15,0.94);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo { font-family: 'DM Serif Display', serif; font-size: 20px; letter-spacing: -0.5px; color: var(--accent); }
+  .logo span { color: var(--text); }
+
+  .badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .badge.auto { background: rgba(96,213,245,0.12); color: var(--accent2); border: 1px solid rgba(96,213,245,0.25); }
+  .badge.manual { background: rgba(200,245,96,0.12); color: var(--accent); border: 1px solid rgba(200,245,96,0.25); }
+
+  main { max-width: 820px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* AUTO BANNER */
+  .auto-banner {
+    background: linear-gradient(135deg, rgba(96,213,245,0.08), rgba(96,213,245,0.02));
+    border: 1px solid rgba(96,213,245,0.2);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .auto-banner.hidden { display: none; }
+  .auto-banner-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .auto-banner-body { flex: 1; }
+  .auto-banner-title { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent2); margin-bottom: 5px; }
+  .auto-banner-data { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+  .data-chip { background: rgba(96,213,245,0.07); border: 1px solid rgba(96,213,245,0.15); border-radius: 6px; padding: 4px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); }
+  .data-chip strong { color: var(--accent2); }
+
+  h1 { font-family: 'DM Serif Display', serif; font-size: clamp(26px, 5vw, 40px); line-height: 1.1; margin-bottom: 6px; letter-spacing: -1px; }
+  h1 em { font-style: italic; color: var(--accent); }
+  .subtitle { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 32px; }
+
+  .form-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; position: relative; overflow: hidden; }
+  .form-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--accent), transparent); }
+  .form-section.auto-filled::before { background: linear-gradient(90deg, var(--accent2), transparent); }
+  .form-section.auto-filled { border-color: rgba(96,213,245,0.2); }
+
+  .section-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .section-label.auto { color: var(--accent2); }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .auto-tag { font-size: 9px; background: rgba(96,213,245,0.12); color: var(--accent2); border: 1px solid rgba(96,213,245,0.25); padding: 2px 7px; border-radius: 10px; letter-spacing: 0.5px; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.full { grid-template-columns: 1fr; }
+  .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+
+  label { display: block; font-size: 10px; font-family: 'DM Mono', monospace; color: var(--muted); letter-spacing: 0.5px; margin-bottom: 5px; text-transform: uppercase; }
+
+  input, select, textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: 'Syne', sans-serif; font-size: 14px; padding: 10px 12px; border-radius: 8px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; appearance: none; }
+  input.auto-filled-field, select.auto-filled-field { border-color: rgba(96,213,245,0.3); background: rgba(96,213,245,0.04); }
+  input:focus, select:focus, textarea:focus { border-color: rgba(200,245,96,0.4); box-shadow: 0 0 0 3px rgba(200,245,96,0.06); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7b85' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; cursor: pointer; }
+  textarea { resize: vertical; min-height: 80px; font-size: 13px; line-height: 1.6; }
+
+  .pills { display: flex; flex-wrap: wrap; gap: 7px; }
+  .pill { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; padding: 5px 12px; border-radius: 20px; cursor: pointer; transition: all 0.15s; user-select: none; }
+  .pill:hover { border-color: var(--accent); color: var(--accent); }
+  .pill.active { background: rgba(200,245,96,0.12); border-color: rgba(200,245,96,0.5); color: var(--accent); }
+
+  input[type=range] { padding: 0; height: 4px; border-radius: 4px; background: linear-gradient(90deg, var(--accent) var(--pct,50%), var(--border) var(--pct,50%)); cursor: pointer; border: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px rgba(200,245,96,0.2); cursor: pointer; }
+  .slider-labels { display: flex; justify-content: space-between; margin-top: 5px; }
+  .slider-labels span { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); }
+  .slider-value { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); text-align: right; margin-top: 3px; }
+
+  .btn-analyze { width: 100%; padding: 15px 24px; background: var(--accent); color: #0a0d0f; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; margin-top: 6px; }
+  .btn-analyze:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(200,245,96,0.25); }
+  .btn-auto-launch { width: 100%; padding: 15px 24px; background: var(--accent2); color: #0a0d0f; font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; border: none; border-radius: var(--radius); cursor: pointer; transition: all 0.2s; letter-spacing: 0.5px; margin-top: 6px; display: none; }
+  .btn-auto-launch:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(96,213,245,0.25); }
+
+  .loading { display: none; text-align: center; padding: 48px 24px; }
+  .loading.show { display: block; }
+  .pulse-ring { width: 52px; height: 52px; border-radius: 50%; border: 2px solid rgba(200,245,96,0.15); border-top-color: var(--accent); animation: spin 1s linear infinite; margin: 0 auto 18px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); letter-spacing: 1px; animation: blink 1.5s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  #results { display: none; }
+  #results.show { display: block; animation: fadeUp 0.5s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+  .results-header { background: var(--surface); border: 1px solid var(--border); border-top: 2px solid var(--accent); border-radius: var(--radius); padding: 22px 24px; margin-bottom: 14px; }
+  .results-title { font-family: 'DM Serif Display', serif; font-size: 24px; margin-bottom: 4px; }
+  .results-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  .result-content { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; line-height: 1.75; font-size: 14px; }
+  .result-content h2 { font-family: 'DM Serif Display', serif; font-size: 19px; color: var(--accent); margin: 22px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .result-content h2:first-child { margin-top: 0; }
+  .result-content h3 { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--accent2); margin: 16px 0 7px; }
+  .result-content p { color: #c8d0d5; margin-bottom: 9px; }
+  .result-content ul, .result-content ol { padding-left: 18px; margin-bottom: 10px; }
+  .result-content li { color: #c8d0d5; margin-bottom: 4px; }
+  .result-content strong { color: var(--text); font-weight: 700; }
+  .result-content em { color: var(--warm); font-style: normal; }
+  .result-content code { font-family: 'DM Mono', monospace; background: var(--surface2); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+  .btn-reset { background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 18px; transition: all 0.2s; text-transform: uppercase; display: block; width: fit-content; margin-left: auto; }
+  .btn-reset:hover { border-color: var(--text); color: var(--text); }
+
+  /* GUIDE RACCOURCI */
+  .shortcut-guide { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 40px; }
+  .guide-header { background: var(--surface2); border-bottom: 1px solid var(--border); padding: 18px 22px; display: flex; align-items: center; gap: 12px; }
+  .guide-icon { font-size: 22px; }
+  .guide-title { font-family: 'DM Serif Display', serif; font-size: 17px; }
+  .guide-subtitle { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-top: 2px; }
+  .guide-body { padding: 22px; }
+
+  .step { display: flex; gap: 16px; margin-bottom: 24px; position: relative; }
+  .step:not(:last-child)::after { content: ''; position: absolute; left: 15px; top: 34px; bottom: -12px; width: 1px; background: var(--border); }
+  .step-num { width: 32px; height: 32px; background: rgba(200,245,96,0.1); border: 1px solid rgba(200,245,96,0.25); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--accent); flex-shrink: 0; }
+  .step-content { flex: 1; padding-top: 4px; }
+  .step-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .step-desc { font-size: 13px; color: #9aaab5; line-height: 1.6; margin-bottom: 10px; }
+
+  .code-block { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); line-height: 1.8; word-break: break-all; position: relative; }
+  .code-block .cm { color: var(--muted); }
+  .code-block .ky { color: var(--accent2); }
+  .code-block .vl { color: var(--warm); }
+
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 9px; padding: 3px 8px; border-radius: 5px; cursor: pointer; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.15s; }
+  .copy-btn:hover { color: var(--text); border-color: var(--text); }
+
+  .tip { background: rgba(245,166,96,0.07); border: 1px solid rgba(245,166,96,0.18); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--warm); margin-top: 10px; line-height: 1.5; }
+
+  .url-template { background: var(--surface2); border: 1px solid rgba(96,213,245,0.2); border-radius: 8px; padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 11px; line-height: 2; word-break: break-all; position: relative; margin-top: 10px; }
+  .url-template .base { color: var(--accent2); }
+  .url-template .param-key { color: var(--accent); }
+  .url-template .param-val { color: var(--warm); }
+
+  @media (max-width: 600px) {
+    .form-row, .form-row.triple { grid-template-columns: 1fr; }
+    header { padding: 16px; }
+    main { padding: 24px 14px 60px; }
+    .auto-banner { flex-direction: column; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Nutri<span>Athlète</span></div>
+  <div class="badge manual" id="mode-badge">⚡ Manuel</div>
+</header>
+
+<main>
+
+  <div class="auto-banner hidden" id="auto-banner">
+    <div class="auto-banner-icon">📲</div>
+    <div class="auto-banner-body">
+      <div class="auto-banner-title">Données reçues — HealthFit / Raccourcis iOS</div>
+      <div style="font-size:13px;color:#9aaab5;line-height:1.5">Séance détectée automatiquement. Vérifie et lance l'analyse.</div>
+      <div class="auto-banner-data" id="auto-chips"></div>
+    </div>
+  </div>
+
+  <h1>Analyse ta séance,<br><em>optimise ta nutrition.</em></h1>
+  <p class="subtitle">Propulsé par IA · Sync HealthFit automatique</p>
+
+  <div id="form-area">
+
+    <div class="form-section" id="sec-seance">
+      <div class="section-label" id="lbl-seance">01 — Séance</div>
+      <div class="form-row">
+        <div>
+          <label>Discipline</label>
+          <select id="discipline">
+            <option value="">Choisir...</option>
+            <option>Course à pied</option>
+            <option>Trail / Ultra-trail</option>
+            <option>Vélo / Cyclisme</option>
+            <option>Natation</option>
+            <option>Triathlon</option>
+            <option>Musculation / Force</option>
+            <option>HIIT / Fractionné</option>
+            <option>Brique triathlon</option>
+            <option>Récupération active</option>
+          </select>
+        </div>
+        <div>
+          <label>Heure de début</label>
+          <input type="time" id="start-time" value="19:00">
+        </div>
+      </div>
+      <div class="form-row triple">
+        <div><label>Durée (min)</label><input type="number" id="duration" placeholder="75"></div>
+        <div><label>Distance (km)</label><input type="number" id="distance" placeholder="15" step="0.1"></div>
+        <div><label>Dénivelé (m)</label><input type="number" id="elevation" placeholder="400"></div>
+      </div>
+      <div class="form-row triple">
+        <div><label>FC moyenne (bpm)</label><input type="number" id="hr-avg" placeholder="148"></div>
+        <div><label>FC max (bpm)</label><input type="number" id="hr-max" placeholder="178"></div>
+        <div><label>Calories (kcal)</label><input type="number" id="calories" placeholder="850"></div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-label">02 — Intensité & Ressenti</div>
+      <div class="form-row full" style="margin-bottom:18px">
+        <div>
+          <label>Intensité perçue RPE (1-10)</label>
+          <input type="range" id="rpe" min="1" max="10" value="6" oninput="updateSlider(this,'rpe-val',rpeLabels)">
+          <div class="slider-labels"><span>Récup</span><span>Zone 3</span><span>Max</span></div>
+          <div class="slider-value" id="rpe-val">6 — Modérément difficile</div>
+        </div>
+      </div>
+      <div class="form-row full" style="margin-bottom:14px">
+        <div>
+          <label>Zones travaillées</label>
+          <div class="pills" id="zones">
+            <div class="pill" onclick="togglePill(this)">Z1 — Récup</div>
+            <div class="pill" onclick="togglePill(this)">Z2 — Endurance</div>
+            <div class="pill" onclick="togglePill(this)">Z3 — Tempo</div>
+            <div class="pill" onclick="togglePill(this)">Z4 — Seuil</div>
+            <div class="pill" onclick="togglePill(this)">Z5 — VO2max</div>
+            <div class="pill" onclick="togglePill(this)">Sprints</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Fatigue ressentie</label>
+          <select id="fatigue">
+            <option>Fraîche — Aucune fatigue</option>
+            <option selected>Modérée — Légère fatigue</option>
+            <option>Importante — Jambes lourdes</option>
+            <option>Très forte — Épuisement</option>
+          </select>
+        </div>
+        <div>
+          <label>Qualité du sommeil</label>
+          <select id="sleep">
+            <option>Excellent (7h+)</option>
+            <option>Bon (6-7h)</option>
+            <option selected>Moyen (5-6h)</option>
+            <option>Mauvais (&lt;5h)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-label">03 — Nutrition péri-séance</div>
+      <div class="form-row full" style="margin-bottom:14px">
+        <div>
+          <label>Dernier repas avant séance</label>
+          <select id="last-meal">
+            <option>À jeun (+5h)</option>
+            <option>+4h avant</option>
+            <option>+3h avant</option>
+            <option>+2h avant</option>
+            <option selected>+1h avant (collation légère)</option>
+            <option>Juste avant (&lt;30min)</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full" style="margin-bottom:14px">
+        <div>
+          <label>Hydratation pendant l'effort</label>
+          <div class="pills" id="hydration">
+            <div class="pill" onclick="togglePillSingle(this,'hydration')">Eau seule</div>
+            <div class="pill active" onclick="togglePillSingle(this,'hydration')">Eau + électrolytes</div>
+            <div class="pill" onclick="togglePillSingle(this,'hydration')">Boisson glucidique</div>
+            <div class="pill" onclick="togglePillSingle(this,'hydration')">Gel(s) / Barre(s)</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div>
+          <label>Objectif de la séance</label>
+          <div class="pills" id="goal">
+            <div class="pill" onclick="togglePillSingle(this,'goal')">Performance</div>
+            <div class="pill active" onclick="togglePillSingle(this,'goal')">Composition corporelle</div>
+            <div class="pill" onclick="togglePillSingle(this,'goal')">Endurance de base</div>
+            <div class="pill" onclick="togglePillSingle(this,'goal')">Récupération</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="section-label">04 — Contexte</div>
+      <div class="form-row full">
+        <div>
+          <label>Notes libres</label>
+          <textarea id="notes" placeholder="ex: J1 d'un bloc de 3 séances, compétition dans 8 jours, crampes en fin de séance..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-auto-launch" id="btn-auto" onclick="analyze()">📲 Lancer l'analyse automatique</button>
+    <button class="btn-analyze" id="btn-manual" onclick="analyze()">⚡ Analyser ma séance & générer ma nutrition</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="pulse-ring"></div>
+    <p class="loading-text">Analyse en cours...</p>
+  </div>
+
+  <div id="results">
+    <div class="results-header">
+      <div class="results-title">Plan nutritionnel post-séance</div>
+      <div class="results-meta" id="results-meta"></div>
+    </div>
+    <div class="result-content" id="result-content"></div>
+    <button class="btn-reset" onclick="reset()">← Nouvelle analyse</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       GUIDE RACCOURCI IOS
+  ═══════════════════════════════════════════ -->
+  <div class="shortcut-guide" id="setup-guide">
+    <div class="guide-header">
+      <div class="guide-icon">📱</div>
+      <div>
+        <div class="guide-title">Configurer le Raccourci iOS</div>
+        <div class="guide-subtitle">HealthFit → NutriAthlète · Zéro intermédiaire · 3 étapes</div>
+      </div>
+    </div>
+    <div class="guide-body">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <div class="step-title">Créer le Raccourci</div>
+          <div class="step-desc">
+            Ouvre l'app <strong>Raccourcis</strong> sur iPhone → <strong>+</strong> → nommer le raccourci <strong>"Analyse Séance"</strong>.
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <div class="step-title">Ajouter les 3 actions</div>
+          <div class="step-desc">Dans l'éditeur, ajouter ces actions dans l'ordre :</div>
+
+          <div class="code-block">
+            <div><span class="cm">// Action 1 — Récupère le dernier workout Apple Health</span></div>
+            <div><span class="ky">Santé</span> → <span class="vl">Chercher des données de santé</span></div>
+            <div style="margin-left:14px">Type : <span class="vl">Exercice physique</span></div>
+            <div style="margin-left:14px">Limite : <span class="vl">1</span> &nbsp;·&nbsp; Tri : <span class="vl">Date de début (récent en premier)</span></div>
+            <br>
+            <div><span class="cm">// Action 2 — Récupère la FC moyenne récente</span></div>
+            <div><span class="ky">Santé</span> → <span class="vl">Chercher des données de santé</span></div>
+            <div style="margin-left:14px">Type : <span class="vl">Fréquence cardiaque</span></div>
+            <div style="margin-left:14px">Limite : <span class="vl">1</span> &nbsp;·&nbsp; Tri : <span class="vl">Date (récent en premier)</span></div>
+            <br>
+            <div><span class="cm">// Action 3 — Ouvre l'app avec les données en URL</span></div>
+            <div><span class="ky">Safari</span> → <span class="vl">Ouvrir les URL</span></div>
+            <div style="margin-left:14px">→ coller l'URL ci-dessous, remplacer les <span class="vl">[variables]</span></div>
+          </div>
+
+          <div class="step-desc" style="margin-top:16px">URL à coller dans l'action <em>"Ouvrir les URL"</em> — les <span style="color:var(--warm)">[crochets]</span> sont des variables dynamiques à insérer depuis les résultats des actions 1 & 2 :</div>
+
+          <div class="url-template" id="url-block">
+            <button class="copy-btn" onclick="copyUrl()">Copier</button>
+            <span class="base" id="app-url">https://TON-URL.com</span><br>
+            ?<span class="param-key">discipline</span>=<span class="param-val">[Type d'exercice du workout]</span><br>
+            &<span class="param-key">duration</span>=<span class="param-val">[Durée du workout en minutes]</span><br>
+            &<span class="param-key">distance</span>=<span class="param-val">[Distance du workout en km]</span><br>
+            &<span class="param-key">calories</span>=<span class="param-val">[Calories actives du workout]</span><br>
+            &<span class="param-key">hr_avg</span>=<span class="param-val">[Valeur de la FC]</span><br>
+            &<span class="param-key">start</span>=<span class="param-val">[Heure de début du workout]</span><br>
+            &<span class="param-key">autolaunch</span>=<span class="param-val">1</span>
+          </div>
+
+          <div class="tip">
+            💡 Dans Raccourcis, tape dans le champ URL et sélectionne <strong>"Insérer variable"</strong> pour chaque <span style="color:var(--warm)">[crochet]</span>. Le paramètre <code>autolaunch=1</code> déclenche l'analyse immédiatement sans clic supplémentaire.
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <div class="step-title">Automatiser avec une Automation</div>
+          <div class="step-desc">Dans Raccourcis → onglet <strong>Automatisation</strong> → <strong>+</strong> → <strong>Personnelle</strong> :</div>
+          <div class="code-block">
+            Déclencheur : <span class="vl">Chargeur connecté</span><br>
+            Heure : <span class="vl">Entre 19h00 et 23h30</span><br>
+            Action : <span class="vl">Exécuter "Analyse Séance"</span><br>
+            Confirmation : <span class="vl">Désactivée</span> (exécution immédiate)
+          </div>
+          <div class="tip">
+            🎯 <strong>Flux complet :</strong> Tu rentres de ta séance → tu branches ton iPhone → l'app s'ouvre automatiquement avec ta séance déjà remplie → l'IA génère ton plan nutrition en quelques secondes.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+const rpeLabels = {
+  1:'1 — Récupération totale',2:'2 — Très facile',3:'3 — Facile',
+  4:'4 — Confortable',5:'5 — Modéré',6:'6 — Modérément difficile',
+  7:'7 — Difficile',8:'8 — Très difficile',9:'9 — Quasi-maximal',
+  10:'10 — Effort maximal'
+};
+
+const disciplineMap = {
+  'Running':'Course à pied','Trail Running':'Trail / Ultra-trail',
+  'Cycling':'Vélo / Cyclisme','Swimming':'Natation','Triathlon':'Triathlon',
+  'Traditional Strength Training':'Musculation / Force',
+  'Functional Strength Training':'Musculation / Force',
+  'High Intensity Interval Training':'HIIT / Fractionné',
+  'Cross Training':'HIIT / Fractionné',
+  'Core Training':'Musculation / Force',
+};
+
+function mapDiscipline(raw) {
+  if (!raw) return null;
+  return disciplineMap[raw.trim()] || raw.trim();
+}
+
+function initFromParams() {
+  const p = new URLSearchParams(window.location.search);
+  const discipline = p.get('discipline');
+  const duration   = p.get('duration');
+  const distance   = p.get('distance');
+  const calories   = p.get('calories');
+  const hrAvg      = p.get('hr_avg');
+  const hrMax      = p.get('hr_max');
+  const elevation  = p.get('elevation');
+  const start      = p.get('start');
+  const autolaunch = p.get('autolaunch');
+
+  const hasData = discipline || duration || distance || calories;
+  if (!hasData) return;
+
+  // Mode auto
+  document.getElementById('mode-badge').className = 'badge auto';
+  document.getElementById('mode-badge').textContent = '📲 Auto HealthFit';
+  document.getElementById('auto-banner').classList.remove('hidden');
+  document.getElementById('btn-auto').style.display = 'block';
+  document.getElementById('btn-manual').style.display = 'none';
+
+  const mapped = mapDiscipline(discipline);
+  if (mapped) {
+    const sel = document.getElementById('discipline');
+    for (let o of sel.options) { if (o.text === mapped) { o.selected = true; break; } }
+    sel.classList.add('auto-filled-field');
+  }
+
+  const setF = (id, val) => { if (!val) return; const el = document.getElementById(id); if (el) { el.value = val; el.classList.add('auto-filled-field'); } };
+
+  if (duration)   setF('duration',  Math.round(parseFloat(duration)));
+  if (distance)   setF('distance',  parseFloat(distance).toFixed(1));
+  if (calories)   setF('calories',  Math.round(parseFloat(calories)));
+  if (hrAvg)      setF('hr-avg',    Math.round(parseFloat(hrAvg)));
+  if (hrMax)      setF('hr-max',    Math.round(parseFloat(hrMax)));
+  if (elevation)  setF('elevation', Math.round(parseFloat(elevation)));
+
+  if (start) {
+    let t = start;
+    if (t.includes('T')) { const d = new Date(t); t = d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+    if (/^\d{2}:\d{2}/.test(t)) setF('start-time', t.substring(0,5));
+  }
+
+  // Section highlight
+  document.getElementById('sec-seance').classList.add('auto-filled');
+  const lbl = document.getElementById('lbl-seance');
+  lbl.classList.add('auto');
+  lbl.innerHTML = '01 — Séance &nbsp;<span class="auto-tag">Auto HealthFit</span>';
+
+  // Chips
+  const chips = document.getElementById('auto-chips');
+  const chip = (icon, val) => { if (!val) return; chips.innerHTML += `<div class="data-chip">${icon} ${val}</div>`; };
+  chip('🏃', mapped || discipline);
+  chip('⏱', duration ? Math.round(parseFloat(duration)) + ' min' : null);
+  chip('📍', distance ? parseFloat(distance).toFixed(1) + ' km' : null);
+  chip('🔥', calories ? Math.round(parseFloat(calories)) + ' kcal' : null);
+  chip('❤️', hrAvg ? Math.round(parseFloat(hrAvg)) + ' bpm' : null);
+  chip('🕐', document.getElementById('start-time').value);
+
+  if (autolaunch === '1') setTimeout(() => analyze(), 900);
+}
+
+function updateSlider(el, labelId, labels) {
+  const pct = ((el.value - el.min)/(el.max - el.min)*100).toFixed(0);
+  el.style.setProperty('--pct', pct+'%');
+  document.getElementById(labelId).textContent = labels[el.value] || el.value;
+}
+
+function togglePill(el) { el.classList.toggle('active'); }
+function togglePillSingle(el, gid) {
+  document.querySelectorAll(`#${gid} .pill`).forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+}
+function getPills(gid) {
+  return [...document.querySelectorAll(`#${gid} .pill.active`)].map(p => p.textContent).join(', ') || 'Non renseigné';
+}
+
+async function analyze() {
+  const discipline = document.getElementById('discipline').value;
+  if (!discipline) { alert('Sélectionne une discipline'); return; }
+
+  const vals = {
+    duration:  document.getElementById('duration').value,
+    distance:  document.getElementById('distance').value,
+    elevation: document.getElementById('elevation').value,
+    startTime: document.getElementById('start-time').value,
+    calories:  document.getElementById('calories').value,
+    hrAvg:     document.getElementById('hr-avg').value,
+    hrMax:     document.getElementById('hr-max').value,
+    rpe:       document.getElementById('rpe').value,
+    fatigue:   document.getElementById('fatigue').value,
+    sleep:     document.getElementById('sleep').value,
+    lastMeal:  document.getElementById('last-meal').value,
+    hydration: getPills('hydration'),
+    goal:      getPills('goal'),
+    zones:     getPills('zones'),
+    notes:     document.getElementById('notes').value,
+  };
+
+  document.getElementById('form-area').style.display = 'none';
+  document.getElementById('auto-banner').classList.add('hidden');
+  document.getElementById('setup-guide').style.display = 'none';
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+
+  const prompt = `Tu es un expert en nutrition sportive spécialisé dans les sports d'endurance (triathlon longue distance, trail, marathon).
+
+PROFIL ATHLÈTE :
+- Gleann, triathlète/coureur d'endurance longue distance
+- Poids actuel : ~76kg, objectif : 70kg à 1m75
+- Métabolisme : Cortisol chroniquement élevé (séances en soirée, sommeil ~6.5h, stress modéré, profil sédentaire en journée)
+- Stockage graisseux : abdominal (profil androïde)
+- Flexibilité métabolique en développement (transition glucides → lipides)
+- Système insulinique : en cours d'optimisation (GLUT4)
+
+DONNÉES SÉANCE (source : Apple Health via Raccourcis iOS) :
+- Discipline : ${discipline}
+- Heure de début : ${vals.startTime}
+- Durée : ${vals.duration || 'non renseigné'} min
+- Distance : ${vals.distance || 'non renseignée'} km
+- Dénivelé : ${vals.elevation || 'non renseigné'} m
+- Calories dépensées : ${vals.calories || 'non renseigné'} kcal
+- FC moyenne : ${vals.hrAvg || 'non renseignée'} bpm
+- FC max : ${vals.hrMax || 'non renseignée'} bpm
+- Intensité perçue (RPE) : ${rpeLabels[vals.rpe]}
+- Zones travaillées : ${vals.zones}
+- Fatigue ressentie : ${vals.fatigue}
+- Qualité du sommeil la nuit précédente : ${vals.sleep}
+- Dernier repas avant séance : ${vals.lastMeal}
+- Hydratation pendant effort : ${vals.hydration}
+- Objectif de la séance : ${vals.goal}
+- Notes contextuelles : ${vals.notes || 'aucune'}
+
+Génère un plan nutritionnel complet et personnalisé. Structure ta réponse ainsi :
+
+## Analyse de la séance
+Synthèse métabolique : carburant utilisé (glucides vs lipides selon FC et durée), impact cortisol, état glycogène, bilan calorique.
+
+## Fenêtre de récupération — 0 à 30 min post-effort
+Ce qu'il faut manger MAINTENANT. Portions précises en grammes, aliments concrets, timing.
+
+## Repas du soir
+Menu détaillé avec portions. Adapté à la composition corporelle et la gestion cortisol nocturne.
+
+## Points de vigilance
+2-3 alertes personnalisées au profil (cortisol, insuline, sommeil, flexibilité métabolique).
+
+## Hydratation & micronutriments
+Eau, électrolytes, magnésium bisglycinate, oméga-3 — priorités ce soir.
+
+## Demain matin
+Premier repas à adapter selon récupération et prochain entraînement.
+
+Sois précis, concret, actionnable. Utilise des exemples d'aliments réels avec grammes. Markdown pour la mise en forme.`;
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 1000, messages: [{ role: "user", content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text || "Erreur.";
+
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('results').classList.add('show');
+    document.getElementById('results-meta').textContent = [
+      discipline,
+      vals.duration ? vals.duration+' min' : '',
+      vals.distance ? vals.distance+' km' : '',
+      vals.calories ? vals.calories+' kcal' : '',
+      vals.hrAvg    ? '❤️ '+vals.hrAvg+' bpm' : '',
+      'RPE '+vals.rpe+'/10', vals.startTime
+    ].filter(Boolean).join(' · ');
+    document.getElementById('result-content').innerHTML = renderMarkdown(text);
+
+  } catch(e) {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('form-area').style.display = 'block';
+    document.getElementById('setup-guide').style.display = 'block';
+    alert('Erreur de connexion. Réessaie.');
+  }
+}
+
+function renderMarkdown(t) {
+  return t
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^- (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(?!<[hul])(.*\S.*)/gm,'<p>$1</p>')
+    .replace(/<p><\/p>/g,'')
+    .replace(/<p>(<[hul])/g,'$1')
+    .replace(/(<\/[hul][^>]*>)<\/p>/g,'$1');
+}
+
+function reset() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('form-area').style.display = 'block';
+  document.getElementById('setup-guide').style.display = 'block';
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+function copyUrl() {
+  const url = document.getElementById('url-block').innerText.replace('Copier','').trim();
+  navigator.clipboard.writeText(url).then(() => {
+    const b = document.querySelector('#url-block .copy-btn');
+    b.textContent = '✓ Copié'; setTimeout(()=>b.textContent='Copier',2000);
+  });
+}
+
+// Init
+document.getElementById('rpe').dispatchEvent(new Event('input'));
+document.getElementById('app-url').textContent = window.location.origin + window.location.pathname;
+initFromParams();
+</script>
+</body>
+</html>
